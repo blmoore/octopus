@@ -116,6 +116,20 @@ IndividualCaller::infer_latents(const std::vector<Haplotype>& haplotypes,
     return std::make_unique<Latents>(sample(), haplotypes, std::move(genotypes), std::move(inferences));
 }
 
+std::unique_ptr<IndividualCaller::Caller::Latents>
+IndividualCaller::infer_latents(const std::vector<Haplotype>& haplotypes,
+                                const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                                const ReadDirectionMap& read_directions) const
+{
+    auto genotypes = generate_all_genotypes(haplotypes, parameters_.ploidy);
+    if (debug_log_) stream(*debug_log_) << "There are " << genotypes.size() << " candidate genotypes";
+    const auto prior_model = make_prior_model(haplotypes);
+    const model::IndividualModel model {*prior_model, debug_log_};
+    haplotype_likelihoods.prime(sample());
+    auto inferences = model.evaluate(genotypes, haplotype_likelihoods, read_directions.at(sample()));
+    return std::make_unique<Latents>(sample(), haplotypes, std::move(genotypes), std::move(inferences));
+}
+
 boost::optional<double>
 IndividualCaller::calculate_model_posterior(const std::vector<Haplotype>& haplotypes,
                                             const HaplotypeLikelihoodCache& haplotype_likelihoods,

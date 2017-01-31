@@ -64,6 +64,11 @@ private:
     infer_latents(const std::vector<Haplotype>& haplotypes,
                   const HaplotypeLikelihoodCache& haplotype_likelihoods) const override;
     
+    std::unique_ptr<Caller::Latents>
+    infer_latents(const std::vector<Haplotype>& haplotypes,
+                  const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                  const ReadDirectionMap& read_directions) const override;
+    
     boost::optional<double>
     calculate_model_posterior(const std::vector<Haplotype>& haplotypes,
                               const HaplotypeLikelihoodCache& haplotype_likelihoods,
