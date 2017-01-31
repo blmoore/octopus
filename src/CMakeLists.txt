@@ -252,6 +252,8 @@ set(CORE_SOURCES
     core/models/genotype/uniform_population_prior_model.hpp
     core/models/genotype/coalescent_population_prior_model.hpp
     core/models/genotype/coalescent_population_prior_model.cpp
+    core/models/genotype/read_direction_model.hpp
+    core/models/genotype/read_direction_model.cpp
 
     core/models/pairhmm/pair_hmm.hpp
     core/models/pairhmm/pair_hmm.cpp
