@@ -1368,6 +1368,7 @@ CallerFactory make_caller_factory(const ReferenceGenome& reference, ReadPipe& re
     vc_builder.set_flank_scoring(allow_flank_scoring(options));
     vc_builder.set_model_mapping_quality(options.at("model-mapping-quality").as<bool>());
     vc_builder.set_max_joint_genotypes(as_unsigned("max-joint-genotypes", options));
+    vc_builder.set_explain_read_directions(options.at("explain-read-directions").as<bool>());
     
     if (options.count("sequence-error-model") == 1) {
         vc_builder.set_sequencer(options.at("sequence-error-model").as<std::string>());

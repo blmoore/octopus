@@ -166,6 +166,12 @@ CallerBuilder& CallerBuilder::set_model_mapping_quality(bool b) noexcept
     return *this;
 }
 
+CallerBuilder& CallerBuilder::set_explain_read_directions(bool b) noexcept
+{
+    params_.explain_read_directions = b;
+    return *this;
+}
+
 // cancer
 
 CallerBuilder& CallerBuilder::set_normal_sample(SampleName normal_sample)
@@ -305,6 +311,7 @@ CallerBuilder::CallerFactoryMap CallerBuilder::generate_factory() const
         params_.allow_model_filtering,
         params_.sequencer,
         params_.model_mapping_quality
+        params_.explain_read_directions
     };
     const auto& samples = components_.read_pipe.get().samples();
     return CallerFactoryMap {

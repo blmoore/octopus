@@ -430,6 +430,10 @@ OptionMap parse_options(const int argc, const char** argv)
     ("use-uniform-genotype-priors",
     po::bool_switch()->default_value(false),
     "Use a uniform prior model when calculating genotype posteriors")
+
+    ("explain-read-directions",
+     po::value<bool>()->default_value(true),
+     "Model read directions in the genotype likelihood calculation")
     ;
     
     po::options_description cancer("Caller (cancer)");

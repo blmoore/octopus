@@ -58,6 +58,7 @@ public:
     CallerBuilder& set_max_joint_genotypes(unsigned max) noexcept;
     CallerBuilder& set_sequencer(std::string sequencer) noexcept;
     CallerBuilder& set_model_mapping_quality(bool b) noexcept;
+    CallerBuilder& set_explain_read_directions(bool b) noexcept;
     
     // cancer
     CallerBuilder& set_normal_sample(SampleName normal_sample);
@@ -105,6 +106,7 @@ private:
         unsigned max_joint_genotypes;
         boost::optional<std::string> sequencer;
         bool model_mapping_quality = true;
+        bool explain_read_directions;
         
         // cancer
         boost::optional<SampleName> normal_sample;

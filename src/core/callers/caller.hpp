@@ -112,6 +112,7 @@ public:
         bool allow_model_filtering;
         boost::optional<std::string> sequencer;
         bool model_mapping_quality;
+        bool explain_read_directions;
     };
     
 private:
