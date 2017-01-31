@@ -9,6 +9,7 @@
 #include <boost/optional.hpp>
 
 #include "genotype_prior_model.hpp"
+#include "basics/aligned_read.hpp"
 #include "core/types/haplotype.hpp"
 #include "core/models/haplotype_likelihood_cache.hpp"
 #include "core/types/genotype.hpp"
@@ -46,6 +47,10 @@ public:
     
     InferredLatents evaluate(const std::vector<Genotype<Haplotype>>& genotypes,
                              const HaplotypeLikelihoodCache& haplotype_likelihoods) const;
+    
+    InferredLatents evaluate(const std::vector<Genotype<Haplotype>>& genotypes,
+                             const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                             const std::vector<AlignedRead::Direction>& read_directions) const;
     
 private:
     const GenotypePriorModel& genotype_prior_model_;

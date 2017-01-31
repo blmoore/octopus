@@ -11,6 +11,7 @@
 
 #include "utils/maths.hpp"
 #include "germline_likelihood_model.hpp"
+#include "read_direction_model.hpp"
 
 #include "timers.hpp"
 
@@ -79,6 +80,32 @@ IndividualModel::evaluate(const std::vector<Genotype<Haplotype>>& genotypes,
 {
     assert(!genotypes.empty());
     auto result = compute_likelihoods(genotypes, haplotype_likelihoods);
+    debug::log_genotype_likelihoods(debug_log_, trace_log_, genotypes, result);
+    add_priors(genotypes, result, genotype_prior_model_);
+    const auto log_evidence = maths::normalise_exp(result);
+    return {{std::move(result)}, log_evidence};
+}
+
+void add_read_direction_probabilities(const std::vector<Genotype<Haplotype>>& genotypes,
+                                      const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                                      const std::vector<AlignedRead::Direction>& read_directions,
+                                      ProbabilityVector& genotype_likelihoods)
+{
+    std::transform(std::cbegin(genotypes), std::cend(genotypes),
+                   std::cbegin(genotype_likelihoods), std::begin(genotype_likelihoods),
+                   [&] (const auto& genotype, const auto p) {
+                       return p + calculate_read_direction_probability(genotype, haplotype_likelihoods, read_directions);
+                   });
+}
+
+IndividualModel::InferredLatents
+IndividualModel::evaluate(const std::vector<Genotype<Haplotype>>& genotypes,
+                          const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                          const std::vector<AlignedRead::Direction>& read_directions) const
+{
+    assert(!genotypes.empty());
+    auto result = compute_likelihoods(genotypes, haplotype_likelihoods);
+    add_read_direction_probabilities(genotypes, haplotype_likelihoods, read_directions, result);
     debug::log_genotype_likelihoods(debug_log_, trace_log_, genotypes, result);
     add_priors(genotypes, result, genotype_prior_model_);
     const auto log_evidence = maths::normalise_exp(result);
