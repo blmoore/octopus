@@ -69,6 +69,7 @@ public:
     
 protected:
     using HaplotypeReference = std::reference_wrapper<const Haplotype>;
+    using ReadDirectionMap = std::unordered_map<SampleName, std::vector<AlignedRead::Direction>>;
     
     std::reference_wrapper<const ReferenceGenome> reference_;
     
@@ -135,6 +136,12 @@ private:
     infer_latents(const std::vector<Haplotype>& haplotypes,
                   const HaplotypeLikelihoodCache& haplotype_likelihoods) const = 0;
     
+    virtual std::unique_ptr<Latents>
+    infer_latents(const std::vector<Haplotype>& haplotypes,
+                  const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                  const ReadDirectionMap& read_directions) const;
+    
+    //virtual Genotype<Haplotype> call_genotype(const Latents& latents) const = 0;
     virtual Genotype<Haplotype> call_genotype(const Latents& latents, const SampleName& sample) const;
     
     virtual boost::optional<double>
