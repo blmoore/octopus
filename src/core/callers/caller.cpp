@@ -164,6 +164,14 @@ std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, 
 
 // private methods
 
+std::unique_ptr<Caller::Latents>
+Caller::infer_latents(const std::vector<Haplotype>& haplotypes,
+                      const HaplotypeLikelihoodCache& haplotype_likelihoods,
+                      const ReadDirectionMap& read_directions) const
+{
+    return infer_latents(haplotypes, haplotype_likelihoods);
+}
+
 namespace debug {
 
 template <typename S>
@@ -221,6 +229,27 @@ void run_likelihood_calculation(const std::string& haplotype_str,
 
 } // namespace debug
 
+namespace {
+
+auto get_read_directions(const ReadContainer& reads)
+{
+    std::vector<AlignedRead::Direction> result(reads.size());
+    std::transform(std::cbegin(reads), std::cend(reads), std::begin(result),
+                   [] (const auto& read) { return read.direction(); });
+    return result;
+}
+
+auto get_read_directions(const ReadMap& reads)
+{
+    std::unordered_map<SampleName, std::vector<AlignedRead::Direction>> result {reads.size()};
+    for (const auto& p : reads) {
+        result[p.first] = get_read_directions(p.second);
+    }
+    return result;
+}
+    
+} // namespace
+
 std::deque<CallWrapper>
 Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Variant>& candidates,
                       const ReadMap& reads, ProgressMeter& progress_meter) const
@@ -258,8 +287,9 @@ Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Va
         }
         auto has_removal_impact = filter_haplotypes(haplotypes, haplotype_generator, haplotype_likelihoods);
         if (haplotypes.empty()) continue;
+        const auto read_directions = get_read_directions(active_reads);
         resume(latent_timer);
-        const auto caller_latents = infer_latents(haplotypes, haplotype_likelihoods);
+        const auto caller_latents = infer_latents(haplotypes, haplotype_likelihoods, read_directions);
         pause(latent_timer);
         if (trace_log_) {
             debug::print_haplotype_posteriors(stream(*trace_log_), *caller_latents->haplotype_posteriors(), -1);
