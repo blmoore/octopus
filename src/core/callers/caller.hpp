@@ -63,7 +63,7 @@ public:
     
     CallTypeSet call_types() const;
     
-    std::deque<VcfRecord> call(const GenomicRegion& call_region, ProgressMeter& progress_meter) const;
+    std::vector<VcfRecord> call(const GenomicRegion& call_region, ProgressMeter& progress_meter) const;
     
     std::vector<VcfRecord> regenotype(const std::vector<Variant>& variants, ProgressMeter& progress_meter) const;
     
@@ -156,6 +156,8 @@ private:
                   const ReadMap& reads, ProgressMeter& progress_meter) const;
     bool refcalls_requested() const noexcept;
     MappableFlatSet<Variant> generate_candidate_variants(const GenomicRegion& region) const;
+    MappableFlatSet<Variant>
+    generate_candidate_variants(const GenomicRegion& region, const std::vector<Variant>& regenotype_variants) const;
     HaplotypeGenerator make_haplotype_generator(const MappableFlatSet<Variant>& candidates, const ReadMap& reads) const;
     HaplotypeLikelihoodCache make_haplotype_likelihood_cache() const;
     VcfRecordFactory make_record_factory(const ReadMap& reads) const;

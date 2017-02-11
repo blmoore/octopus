@@ -116,14 +116,14 @@ auto convert_to_vcf(std::deque<CallWrapper>&& calls, const VcfRecordFactory& fac
 {
     auto records = factory.make(to_vector(std::move(calls)));
     erase_calls_outside_region(records, call_region);
-    std::deque<VcfRecord> result {};
+    std::vector<VcfRecord> result {};
     utils::append(std::move(records), result);
     return result;
 }
 
 } // namespace
 
-std::deque<VcfRecord> Caller::call(const GenomicRegion& call_region, ProgressMeter& progress_meter) const
+std::vector<VcfRecord> Caller::call(const GenomicRegion& call_region, ProgressMeter& progress_meter) const
 {
     resume(init_timer);
     ReadMap reads;
@@ -159,7 +159,28 @@ std::deque<VcfRecord> Caller::call(const GenomicRegion& call_region, ProgressMet
     
 std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, ProgressMeter& progress_meter) const
 {
-    return {}; // TODO
+    if (variants.empty()) return {};
+    ReadMap reads;
+    const auto call_region = encompassing_region(variants);
+    if (candidate_generator_.requires_reads()) {
+        reads = read_pipe_.get().fetch_reads(call_region);
+        add_reads(reads, candidate_generator_);
+        if (!refcalls_requested() && all_empty(reads)) {
+            if (debug_log_) stream(*debug_log_) << "Stopping early as no reads found in call region";
+            return {};
+        }
+        if (debug_log_) stream(*debug_log_) << "There are " << count_reads(reads) << " reads";
+    }
+    const auto candidate_region = calculate_candidate_region(call_region, reads, candidate_generator_);
+    auto candidates = generate_candidate_variants(candidate_region, variants);
+    if (debug_log_) debug::print_final_candidates(stream(*debug_log_), candidates);
+    if (!candidate_generator_.requires_reads()) {
+        reads = read_pipe_.get().fetch_reads(extract_regions(candidates));
+    }
+    auto calls = call_variants(call_region, candidates, reads, progress_meter);
+    progress_meter.log_completed(call_region);
+    const auto record_factory = make_record_factory(reads);
+    return convert_to_vcf(std::move(calls), record_factory, call_region);
 }
 
 // private methods
@@ -749,6 +770,22 @@ bool Caller::refcalls_requested() const noexcept
     return parameters_.refcall_type != RefCallType::none;
 }
 
+namespace {
+
+template <typename T>
+auto to_mappable_flat_set(std::vector<T>&& values)
+{
+    using std::make_move_iterator;
+    return MappableFlatSet<Variant> {make_move_iterator(std::begin(values)), make_move_iterator(std::end(values))};
+}
+
+void merge(const std::vector<Variant>& src, MappableFlatSet<Variant>& dst)
+{
+    dst.insert(std::cbegin(src), std::cend(src));
+}
+    
+} // namespace
+
 MappableFlatSet<Variant> Caller::generate_candidate_variants(const GenomicRegion& region) const
 {
     if (debug_log_) stream(*debug_log_) << "Generating candidate variants in region " << region;
@@ -756,10 +793,19 @@ MappableFlatSet<Variant> Caller::generate_candidate_variants(const GenomicRegion
     if (debug_log_) debug::print_left_aligned_candidates(stream(*debug_log_), raw_candidates, reference_);
     auto final_candidates = unique_left_align(std::move(raw_candidates), reference_);
     candidate_generator_.clear();
-    return MappableFlatSet<Variant> {
-        std::make_move_iterator(std::begin(final_candidates)),
-        std::make_move_iterator(std::end(final_candidates))
-    };
+    return to_mappable_flat_set(std::move(final_candidates));
+}
+
+MappableFlatSet<Variant>
+Caller::generate_candidate_variants(const GenomicRegion& region, const std::vector<Variant>& regenotype_variants) const
+{
+    if (debug_log_) stream(*debug_log_) << "Generating candidate variants in region " << region;
+    auto raw_candidates = candidate_generator_.generate(region);
+    if (debug_log_) debug::print_left_aligned_candidates(stream(*debug_log_), raw_candidates, reference_);
+    auto result = to_mappable_flat_set(unique_left_align(std::move(raw_candidates), reference_));
+    merge(regenotype_variants, result);
+    candidate_generator_.clear();
+    return result;
 }
 
 HaplotypeGenerator Caller::make_haplotype_generator(const MappableFlatSet<Variant>& candidates,

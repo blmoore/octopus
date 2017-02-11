@@ -204,7 +204,7 @@ void log_startup_info(const GenomeCallingComponents& components)
     }
 }
 
-void write_calls(std::deque<VcfRecord>&& calls, VcfWriter& out)
+void write_calls(std::vector<VcfRecord>&& calls, VcfWriter& out)
 {
     static auto debug_log = get_debug_log();
     if (debug_log) stream(*debug_log) << "Writing " << calls.size() << " calls to output";
@@ -260,7 +260,7 @@ auto propose_call_subregion(const ContigCallingComponents& components,
     return propose_call_subregion(components, right_overhang_region(input_region, current_subregion), min_size);
 }
 
-void buffer_connecting_calls(std::deque<VcfRecord>& calls,
+void buffer_connecting_calls(std::vector<VcfRecord>& calls,
                              const GenomicRegion& next_calling_region,
                              std::vector<VcfRecord>& buffer)
 {
@@ -275,7 +275,7 @@ void buffer_connecting_calls(std::deque<VcfRecord>& calls,
 }
 
 void buffer_connecting_calls(const GenomicRegion& buffered_region,
-                             std::deque<VcfRecord>& calls,
+                             std::vector<VcfRecord>& calls,
                              std::vector<VcfRecord>& buffer)
 {
     const auto it = std::find_if_not(std::begin(calls), std::end(calls),
@@ -294,7 +294,7 @@ bool is_consistent(const std::deque<VcfRecord>& merged_calls)
 }
 
 void resolve_connecting_calls(std::vector<VcfRecord>& old_connecting_calls,
-                              std::deque<VcfRecord>& calls,
+                              std::vector<VcfRecord>& calls,
                               const ContigCallingComponents& components)
 {
     using std::begin; using std::end; using std::make_move_iterator;
@@ -337,7 +337,7 @@ void run_octopus_on_contig(ContigCallingComponents&& components)
     
     assert(!components.regions.empty());
     
-    std::deque<VcfRecord> calls;
+    std::vector<VcfRecord> calls;
     std::vector<VcfRecord> connecting_calls {};
     auto input_region = components.regions.front();
     auto subregion    = propose_call_subregion(components, input_region);
@@ -675,7 +675,7 @@ Task pop(TaskMap& tasks, TaskMakerSyncPacket& sync)
 struct CompletedTask : public Task
 {
     CompletedTask(Task task) : Task {std::move(task)}, calls {}, runtime {} {}
-    std::deque<VcfRecord> calls;
+    std::vector<VcfRecord> calls;
     utils::TimeInterval runtime;
 };
 
@@ -775,14 +775,14 @@ auto make_contig_calling_component_factory_map(GenomeCallingComponents& componen
     return result;
 }
 
-auto find_first_lhs_connecting(const std::deque<VcfRecord>& lhs_calls, const GenomicRegion& rhs_region)
+auto find_first_lhs_connecting(const std::vector<VcfRecord>& lhs_calls, const GenomicRegion& rhs_region)
 {
     const auto rhs_begin = mapped_begin(rhs_region);
     return std::find_if(std::cbegin(lhs_calls), std::cend(lhs_calls),
                         [&rhs_begin] (const auto& call) { return mapped_end(call) > rhs_begin; });
 }
 
-auto find_last_rhs_connecting(const GenomicRegion& lhs_region, const std::deque<VcfRecord>& rhs_calls)
+auto find_last_rhs_connecting(const GenomicRegion& lhs_region, const std::vector<VcfRecord>& rhs_calls)
 {
     const auto lhs_end = mapped_end(lhs_region);
     return std::find_if_not(std::cbegin(rhs_calls), std::cend(rhs_calls),
