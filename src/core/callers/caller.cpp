@@ -200,12 +200,11 @@ std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, 
     }
     const auto candidate_region = calculate_candidate_region(call_region, reads, candidate_generator_);
     auto candidates = generate_candidate_variants(candidate_region, variants);
-    remove_nonoverlapping(candidates, get_regenotype_regions(variants));
     if (debug_log_) debug::print_final_candidates(stream(*debug_log_), candidates);
     if (!candidate_generator_.requires_reads()) {
         reads = read_pipe_.get().fetch_reads(extract_regions(candidates));
     }
-    auto calls = call_variants(call_region, candidates, to_mappable_flat_set(variants), reads, progress_meter);
+    auto calls = call_variants(call_region, candidates, reads, progress_meter);
     progress_meter.log_completed(call_region);
     const auto record_factory = make_record_factory(reads);
     return convert_to_vcf(std::move(calls), record_factory, call_region);
@@ -800,6 +799,13 @@ bool Caller::refcalls_requested() const noexcept
 }
 
 namespace {
+
+template <typename T>
+auto to_mappable_flat_set(std::vector<T>&& values)
+{
+    using std::make_move_iterator;
+    return MappableFlatSet<Variant> {make_move_iterator(std::begin(values)), make_move_iterator(std::end(values))};
+}
 
 void merge(const std::vector<Variant>& src, MappableFlatSet<Variant>& dst)
 {
