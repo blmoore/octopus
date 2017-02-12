@@ -112,6 +112,19 @@ auto to_vector(std::deque<T>&& values)
     return std::vector<T> {make_move_iterator(std::begin(values)), make_move_iterator(std::end(values))};
 }
 
+template <typename T>
+auto to_mappable_flat_set(const std::vector<T>& values)
+{
+    return MappableFlatSet<Variant> {std::cbegin(values), std::cend(values)};
+}
+
+template <typename T>
+auto to_mappable_flat_set(std::vector<T>&& values)
+{
+    using std::make_move_iterator;
+    return MappableFlatSet<Variant> {make_move_iterator(std::begin(values)), make_move_iterator(std::end(values))};
+}
+
 auto convert_to_vcf(std::deque<CallWrapper>&& calls, const VcfRecordFactory& factory, const GenomicRegion& call_region)
 {
     auto records = factory.make(to_vector(std::move(calls)));
@@ -148,7 +161,7 @@ std::vector<VcfRecord> Caller::call(const GenomicRegion& call_region, ProgressMe
         reads = read_pipe_.get().fetch_reads(extract_regions(candidates));
     }
     pause(init_timer);
-    auto calls = call_variants(call_region, candidates, reads, progress_meter);
+    auto calls = call_variants(call_region, candidates, candidates, reads, progress_meter);
     candidates.clear();
     candidates.shrink_to_fit();
     progress_meter.log_completed(call_region);
@@ -156,7 +169,21 @@ std::vector<VcfRecord> Caller::call(const GenomicRegion& call_region, ProgressMe
     if (debug_log_) stream(*debug_log_) << "Converting " << calls.size() << " calls made in " << call_region << " to VCF";
     return convert_to_vcf(std::move(calls), record_factory, call_region);
 }
-    
+
+auto get_regenotype_regions(const std::vector<Variant>& variants)
+{
+    auto regions = extract_regions(variants);
+    for (auto& region : regions) region = expand(region, 200);
+    return extract_covered_regions(regions);
+}
+
+void remove_nonoverlapping(MappableFlatSet<Variant>& variants, const std::vector<GenomicRegion>& regions)
+{
+    for (const auto& region : extract_intervening_regions(regions)) {
+        variants.erase_overlapped(region);
+    }
+}
+
 std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, ProgressMeter& progress_meter) const
 {
     if (variants.empty()) return {};
@@ -173,11 +200,12 @@ std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, 
     }
     const auto candidate_region = calculate_candidate_region(call_region, reads, candidate_generator_);
     auto candidates = generate_candidate_variants(candidate_region, variants);
+    remove_nonoverlapping(candidates, get_regenotype_regions(variants));
     if (debug_log_) debug::print_final_candidates(stream(*debug_log_), candidates);
     if (!candidate_generator_.requires_reads()) {
         reads = read_pipe_.get().fetch_reads(extract_regions(candidates));
     }
-    auto calls = call_variants(call_region, candidates, reads, progress_meter);
+    auto calls = call_variants(call_region, candidates, to_mappable_flat_set(variants), reads, progress_meter);
     progress_meter.log_completed(call_region);
     const auto record_factory = make_record_factory(reads);
     return convert_to_vcf(std::move(calls), record_factory, call_region);
@@ -274,7 +302,8 @@ void merge_unique(std::vector<T>&& src, std::vector<T>& dst)
 } // namespace
 
 std::deque<CallWrapper>
-Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Variant>& candidates,
+Caller::call_variants(const GenomicRegion& call_region,  const MappableFlatSet<Variant>& candidates,
+                      const MappableFlatSet<Variant>& callable_candidates,
                       const ReadMap& reads, ProgressMeter& progress_meter) const
 {
     auto haplotype_generator   = make_haplotype_generator(candidates, reads);
@@ -343,7 +372,7 @@ Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Va
             protected_haplotypes.clear();
         }
         call_variants(active_region, call_region, next_active_region, backtrack_region,
-                      candidates, haplotypes, haplotype_likelihoods, active_reads, *caller_latents,
+                      callable_candidates, haplotypes, haplotype_likelihoods, active_reads, *caller_latents,
                       result, prev_called_region, completed_region);
         haplotype_likelihoods.clear();
         progress_meter.log_completed(completed_region);
@@ -771,13 +800,6 @@ bool Caller::refcalls_requested() const noexcept
 }
 
 namespace {
-
-template <typename T>
-auto to_mappable_flat_set(std::vector<T>&& values)
-{
-    using std::make_move_iterator;
-    return MappableFlatSet<Variant> {make_move_iterator(std::begin(values)), make_move_iterator(std::end(values))};
-}
 
 void merge(const std::vector<Variant>& src, MappableFlatSet<Variant>& dst)
 {

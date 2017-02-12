@@ -153,6 +153,7 @@ private:
     
     std::deque<CallWrapper>
     call_variants(const GenomicRegion& call_region,  const MappableFlatSet<Variant>& candidates,
+                  const MappableFlatSet<Variant>& callable_candidates,
                   const ReadMap& reads, ProgressMeter& progress_meter) const;
     bool refcalls_requested() const noexcept;
     MappableFlatSet<Variant> generate_candidate_variants(const GenomicRegion& region) const;
