@@ -1446,6 +1446,17 @@ CallerFactory make_caller_factory(const ReferenceGenome& reference, ReadPipe& re
     return CallerFactory {std::move(vc_builder)};
 }
 
+boost::optional<VariantGenerator> make_regenotype_variant_generator(const OptionMap& options, const ReferenceGenome& reference)
+{
+    boost::optional<VariantGenerator> result {};
+    if (options.count("regenotype") == 1) {
+        const auto regenotype_path = resolve_path(options.at("regenotype").as<fs::path>(), options);
+        constexpr auto max_variant_size = std::numeric_limits<Variant::MappingDomain::Size>::max();
+        result = VariantGeneratorBuilder().add_vcf_extractor(regenotype_path, {max_variant_size}).build(reference);
+    }
+    return result;
+}
+
 bool is_call_filtering_requested(const OptionMap& options) noexcept
 {
     return options.at("call-filtering").as<bool>();

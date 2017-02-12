@@ -19,6 +19,7 @@
 #include "io/variant/vcf_writer.hpp"
 #include "readpipe/read_pipe.hpp"
 #include "core/callers/caller_factory.hpp"
+#include "core/tools/vargen/variant_generator.hpp"
 #include "core/csr/filters/variant_call_filter_factory.hpp"
 
 namespace fs = boost::filesystem;
@@ -55,6 +56,8 @@ bool call_sites_only(const OptionMap& options);
 
 CallerFactory make_caller_factory(const ReferenceGenome& reference, ReadPipe& read_pipe,
                                   const InputRegionMap& regions, const OptionMap& options);
+
+boost::optional<VariantGenerator> make_regenotype_variant_generator(const OptionMap& options, const ReferenceGenome& reference);
 
 bool is_call_filtering_requested(const OptionMap& options) noexcept;
 
