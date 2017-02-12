@@ -319,7 +319,7 @@ void resolve_connecting_calls(std::vector<VcfRecord>& old_connecting_calls,
             const auto unresolved_region = encompassing_region(merged_calls);
             merged_calls.clear();
             merged_calls.shrink_to_fit();
-            auto new_calls = components.caller->call(unresolved_region, components.progress_meter);
+            auto new_calls = components.caller.call(unresolved_region);
             // TODO: we need to make sure the new calls don't contain any calls
             // outside the unresolved_region, and also possibly adjust phase regions
             // in calls past unresolved_region.
@@ -348,7 +348,7 @@ void run_octopus_on_contig(ContigCallingComponents&& components)
         if (debug_log) stream(*debug_log) << "Processing subregion " << subregion;
         
         try {
-            calls = components.caller->call(subregion, components.progress_meter);
+            calls = components.caller.call(subregion);
         } catch(...) {
             // TODO: which exceptions can we recover from?
             throw;
@@ -714,12 +714,12 @@ auto run(Task task, ContigCallingComponents components, CallerSyncPacket& sync)
         try {
             CompletedTask result {task};
             result.runtime.start = std::chrono::system_clock::now();
-            result.calls = components.caller->call(task.region, components.progress_meter);
+            result.calls = components.caller.call(task.region);
             result.runtime.end = std::chrono::system_clock::now();
             std::unique_lock<std::mutex> lock {sync.mutex};
             ++sync.num_finished;
-            lock.unlock();
             sync.cv.notify_all();
+            lock.unlock();
             return result;
         } catch (...) {
             logging::ErrorLogger error_log {};
@@ -828,7 +828,7 @@ void resolve_connecting_calls(CompletedTask& lhs, CompletedTask& rhs,
             logging::WarningLogger warn_log {};
             stream(warn_log) << "Recalling " << unresolved_region
                              << " due to call inconsistency between thread tasks. This may increase expected runtime";
-            auto resolved_calls = components.caller->call(unresolved_region, components.progress_meter);
+            auto resolved_calls = components.caller.call(unresolved_region);
             if (!resolved_calls.empty()) {
                 if (!contains(unresolved_region, encompassing_region(resolved_calls))) {
                     // TODO

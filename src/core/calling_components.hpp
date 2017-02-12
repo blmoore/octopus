@@ -20,8 +20,10 @@
 #include "io/variant/vcf_writer.hpp"
 #include "readpipe/read_pipe_fwd.hpp"
 #include "core/callers/caller_factory.hpp"
+#include "core/callers/caller_wrapper.hpp"
 #include "core/csr/filters/variant_call_filter_factory.hpp"
 #include "logging/progress_meter.hpp"
+#include "core/tools/vargen/variant_generator.hpp"
 
 namespace octopus {
 
@@ -62,6 +64,7 @@ public:
     ReadPipe& filter_read_pipe() noexcept;
     const ReadPipe& filter_read_pipe() const noexcept;
     ProgressMeter& progress_meter() noexcept;
+    boost::optional<VariantGenerator> regenotype_variant_generator() const;
     bool sites_only() const noexcept;
     boost::optional<Path> legacy() const;
     
@@ -94,6 +97,7 @@ private:
         std::size_t read_buffer_size;
         boost::optional<Path> temp_directory;
         ProgressMeter progress_meter;
+        boost::optional<VariantGenerator> regenotype_variant_generator_;
         bool sites_only;
         boost::optional<VcfWriter> filtered_output;
         boost::optional<Path> legacy;
@@ -121,11 +125,10 @@ struct ContigCallingComponents
     std::reference_wrapper<const ReadManager> read_manager;
     const InputRegionMap::mapped_type regions;
     std::reference_wrapper<const std::vector<SampleName>> samples;
-    std::unique_ptr<const Caller> caller;
+    CallerWrapper caller;
     std::size_t read_buffer_size;
     std::reference_wrapper<VcfWriter> output;
-    std::reference_wrapper<ProgressMeter> progress_meter;
-    
+	
     ContigCallingComponents() = delete;
     
     ContigCallingComponents(const GenomicRegion::ContigName& contig,

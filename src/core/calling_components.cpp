@@ -149,6 +149,11 @@ ProgressMeter& GenomeCallingComponents::progress_meter() noexcept
     return components_.progress_meter;
 }
 
+boost::optional<VariantGenerator> GenomeCallingComponents::regenotype_variant_generator() const
+{
+    return components_.regenotype_variant_generator_;
+}
+
 boost::optional<GenomeCallingComponents::Path> GenomeCallingComponents::legacy() const
 {
     return components_.legacy;
@@ -416,6 +421,7 @@ GenomeCallingComponents::Components::Components(ReferenceGenome&& reference, Rea
 , read_buffer_size {}
 , temp_directory {get_temp_directory(options)}
 , progress_meter {regions}
+, regenotype_variant_generator_ {options::make_regenotype_variant_generator(options, this->reference)}
 , sites_only {options::call_sites_only(options)}
 , filtered_output {}
 , legacy {}
@@ -589,10 +595,10 @@ ContigCallingComponents::ContigCallingComponents(const GenomicRegion::ContigName
 , read_manager {genome_components.read_manager()}
 , regions {genome_components.search_regions().at(contig)}
 , samples {genome_components.samples()}
-, caller {genome_components.caller_factory().make(contig)}
+, caller {genome_components.caller_factory().make(contig), genome_components.progress_meter(),
+          genome_components.regenotype_variant_generator()}
 , read_buffer_size {genome_components.read_buffer_size()}
 , output {genome_components.output()}
-, progress_meter {genome_components.progress_meter()}
 {}
 
 ContigCallingComponents::ContigCallingComponents(const GenomicRegion::ContigName& contig, VcfWriter& output,
@@ -601,10 +607,10 @@ ContigCallingComponents::ContigCallingComponents(const GenomicRegion::ContigName
 , read_manager {genome_components.read_manager()}
 , regions {genome_components.search_regions().at(contig)}
 , samples {genome_components.samples()}
-, caller {genome_components.caller_factory().make(contig)}
+, caller {genome_components.caller_factory().make(contig), genome_components.progress_meter(),
+          genome_components.regenotype_variant_generator()}
 , read_buffer_size {genome_components.read_buffer_size()}
 , output {output}
-, progress_meter {genome_components.progress_meter()}
 {}
 
 } // namespace octopus
