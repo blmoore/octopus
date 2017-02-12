@@ -32,7 +32,7 @@ public:
     VariantGenerator();
     
     VariantGenerator(const VariantGenerator&);
-    VariantGenerator& operator=(VariantGenerator);
+    VariantGenerator& operator=(const VariantGenerator&);
     VariantGenerator(VariantGenerator&&)            = default;
     VariantGenerator& operator=(VariantGenerator&&) = default;
     

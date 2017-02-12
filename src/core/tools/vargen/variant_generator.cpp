@@ -23,9 +23,12 @@ VariantGenerator::VariantGenerator(const VariantGenerator& other)
     }
 }
 
-VariantGenerator& VariantGenerator::operator=(VariantGenerator other)
+VariantGenerator& VariantGenerator::operator=(const VariantGenerator& other)
 {
-    std::swap(generators_, other.generators_);
+    if (this == &other) {
+        VariantGenerator tmp {other};
+        std::swap(generators_, tmp.generators_);
+    }
     return *this;
 }
 
