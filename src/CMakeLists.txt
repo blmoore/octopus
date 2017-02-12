@@ -186,6 +186,8 @@ set(CORE_SOURCES
     core/callers/population_caller.cpp
     core/callers/trio_caller.hpp
     core/callers/trio_caller.cpp
+	core/callers/caller_wrapper.hpp
+	core/callers/caller_wrapper.cpp
 
     core/types/calls/call_types.hpp
     core/types/calls/call.hpp
