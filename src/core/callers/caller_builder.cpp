@@ -310,7 +310,7 @@ CallerBuilder::CallerFactoryMap CallerBuilder::generate_factory() const
         params_.allow_flank_scoring,
         params_.allow_model_filtering,
         params_.sequencer,
-        params_.model_mapping_quality
+        params_.model_mapping_quality,
         params_.explain_read_directions
     };
     const auto& samples = components_.read_pipe.get().samples();
