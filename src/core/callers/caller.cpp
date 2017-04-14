@@ -201,7 +201,7 @@ std::vector<VcfRecord> Caller::regenotype(const std::vector<Variant>& variants, 
     const auto candidate_region = calculate_candidate_region(call_region, reads, candidate_generator_);
     auto candidates = generate_candidate_variants(candidate_region, variants);
     remove_nonoverlapping(candidates, get_regenotype_regions(variants));
-    if (debug_log_) debug::print_final_candidates(stream(*debug_log_), candidates);
+    if (debug_log_) debug::print_final_candidates(stream(*debug_log_), candidates, call_region);
     if (!candidate_generator_.requires_reads()) {
         reads = read_pipe_.get().fetch_reads(extract_regions(candidates));
     }
