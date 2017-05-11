@@ -104,11 +104,9 @@ namespace debug {
 void print_alignment(const std::vector<char>& align1, const std::vector<char>& align2)
 {
     const auto isnt_null = [] (const char c) { return c != '\0'; };
-    std::copy_if(std::cbegin(align1), std::cend(align1), std::ostreambuf_iterator<char>(std::cout),
-                 isnt_null);
+    std::copy_if(std::cbegin(align1), std::cend(align1), std::ostreambuf_iterator<char>(std::cout), isnt_null);
     std::cout << '\n';
-    std::copy_if(std::cbegin(align2), std::cend(align2), std::ostreambuf_iterator<char>(std::cout),
-                 isnt_null);
+    std::copy_if(std::cbegin(align2), std::cend(align2), std::ostreambuf_iterator<char>(std::cout), isnt_null);
     std::cout << '\n';
 }
 
@@ -137,7 +135,8 @@ auto simd_align(const std::string& truth, const std::string& target,
                                        model.snv_mask.data() + alignment_offset,
                                        model.snv_priors.data() + alignment_offset,
                                        model.gap_open.data() + alignment_offset,
-                                       model.gap_extend, model.nuc_prior);
+                                       model.gap_extend.data() + alignment_offset,
+                                       model.nuc_prior);
         return -ln10Div10<> * static_cast<double>(score);
     } else {
         thread_local std::vector<char> align1 {}, align2 {};
@@ -153,7 +152,8 @@ auto simd_align(const std::string& truth, const std::string& target,
                                        model.snv_mask.data() + alignment_offset,
                                        model.snv_priors.data() + alignment_offset,
                                        model.gap_open.data() + alignment_offset,
-                                       model.gap_extend, model.nuc_prior,
+                                       model.gap_extend.data() + alignment_offset,
+                                       model.nuc_prior,
                                        align1.data(), align2.data(), first_pos);
         auto lhs_flank_size = static_cast<int>(model.lhs_flank_size);
         if (lhs_flank_size < alignment_offset) {
@@ -179,7 +179,8 @@ auto simd_align(const std::string& truth, const std::string& target,
                                                        model.snv_mask.data() + alignment_offset,
                                                        model.snv_priors.data() + alignment_offset,
                                                        model.gap_open.data() + alignment_offset,
-                                                       model.gap_extend, model.nuc_prior,
+                                                       model.gap_extend.data() + alignment_offset,
+                                                       model.nuc_prior,
                                                        first_pos,
                                                        align1.data(), align2.data(),
                                                        target_mask_size);
