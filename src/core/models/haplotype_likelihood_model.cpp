@@ -47,7 +47,7 @@ void HaplotypeLikelihoodModel::reset(const Haplotype& haplotype, boost::optional
     snv_error_model_->evaluate(haplotype,
                                haplotype_snv_forward_mask_, haplotype_snv_forward_priors_,
                                haplotype_snv_reverse_mask_, haplotype_snv_reverse_priors_);
-    indel_error_model_->set_penalities(haplotype, haplotype_gap_open_penalities_, haplotype_gap_extension_penalty_);
+    indel_error_model_->set_penalities(haplotype, haplotype_gap_open_penalities_, haplotype_gap_extension_penalties_);
 }
 
 void HaplotypeLikelihoodModel::clear() noexcept
@@ -72,7 +72,7 @@ HaplotypeLikelihoodModel::HaplotypeLikelihoodModel(std::unique_ptr<SnvErrorModel
 , haplotype_ {nullptr}
 , haplotype_flank_state_ {}
 , haplotype_gap_open_penalities_ {}
-, haplotype_gap_extension_penalty_ {}
+, haplotype_gap_extension_penalties_ {}
 , use_mapping_quality_ {use_mapping_quality}
 {}
 
@@ -169,8 +169,7 @@ double HaplotypeLikelihoodModel::evaluate(const AlignedRead& read,
     hmm::MutationModel model {
         is_forward ? haplotype_snv_forward_mask_ : haplotype_snv_reverse_mask_,
         is_forward ? haplotype_snv_forward_priors_ : haplotype_snv_reverse_priors_,
-        haplotype_gap_open_penalities_,
-        haplotype_gap_extension_penalty_
+        haplotype_gap_open_penalities_, haplotype_gap_extension_penalties_
     };
     if (haplotype_flank_state_) {
         model.lhs_flank_size = haplotype_flank_state_->lhs_flank;
