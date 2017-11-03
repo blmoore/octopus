@@ -46,7 +46,7 @@ private:
      }};
     static constexpr std::array<PenaltyType, 15> extendPenalties_ =
     {{
-     30,30,22,18,8,5,4,4,4,4,4,4,3,3,3
+     10,10,9,8,7,5,4,4,4,3,3,3,2,2,2
      }};
     
     virtual void do_set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const;
