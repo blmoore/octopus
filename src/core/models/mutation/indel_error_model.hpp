@@ -27,10 +27,10 @@ public:
     
     virtual ~IndelErrorModel() = default;
     
-    PenaltyType evaluate(const Haplotype& haplotype, PenaltyVector& gap_open_penalties) const;
+    void set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const;
     
 private:
-    virtual PenaltyType do_evaluate(const Haplotype& haplotype, PenaltyVector& gap_open_penalties) const = 0;
+    virtual void do_set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const = 0;
 };
 
 } // namespace octopus

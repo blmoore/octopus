@@ -7,10 +7,9 @@
 
 namespace octopus {
 
-IndelErrorModel::PenaltyType
-IndelErrorModel::evaluate(const Haplotype& haplotype, PenaltyVector& gap_open_penalities) const
+void IndelErrorModel::set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const
 {
-    return do_evaluate(haplotype, gap_open_penalities);
+    return do_set_penalities(haplotype, gap_open, gap_extend);
 }
 
 } // namespace octopus
