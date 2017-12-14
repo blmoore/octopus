@@ -83,14 +83,11 @@ private:
     std::unique_ptr<IndelErrorModel> indel_error_model_;
     
     const Haplotype* haplotype_;
-    
     boost::optional<FlankState> haplotype_flank_state_;
-    
     std::vector<char> haplotype_snv_forward_mask_, haplotype_snv_reverse_mask_;
     std::vector<Penalty> haplotype_snv_forward_priors_, haplotype_snv_reverse_priors_;
+    std::vector<Penalty> haplotype_gap_open_penalities_, haplotype_gap_extension_penalties_;
     
-    std::vector<Penalty> haplotype_gap_open_penalities_;
-    Penalty haplotype_gap_extension_penalty_;
     bool use_mapping_quality_ = true;
 };
 

@@ -16,7 +16,7 @@ constexpr decltype(HiSeqIndelErrorModel::homopolymerErrors_) HiSeqIndelErrorMode
 constexpr decltype(HiSeqIndelErrorModel::homopolymerErrors_) HiSeqIndelErrorModel::diNucleotideTandemRepeatErrors_;
 constexpr decltype(HiSeqIndelErrorModel::homopolymerErrors_) HiSeqIndelErrorModel::triNucleotideTandemRepeatErrors_;
 constexpr decltype(HiSeqIndelErrorModel::homopolymerErrors_) HiSeqIndelErrorModel::polyNucleotideTandemRepeatErrors_;
-constexpr decltype(HiSeqIndelErrorModel::defaultGapExtension_) HiSeqIndelErrorModel::defaultGapExtension_;
+constexpr decltype(HiSeqIndelErrorModel::extendPenalties_) HiSeqIndelErrorModel::extendPenalties_;
 
 namespace {
 
@@ -26,9 +26,9 @@ auto extract_repeats(const Haplotype& haplotype)
 }
 
 template <typename C, typename T>
-static auto get_penalty(const C& penalties, const T length)
+static auto get_penalty(const C& penalties, const T length) noexcept
 {
-    return (length < penalties.size()) ? penalties[length] : penalties.back();
+    return length < penalties.size() ? penalties[length] : penalties.back();
 }
 
 template <typename FordwardIt, typename Tp>
@@ -50,52 +50,48 @@ HiSeqIndelErrorModel::do_evaluate(const Haplotype& haplotype, PenaltyVector& gap
 {
     using std::begin; using std::end; using std::cbegin; using std::cend; using std::next;
     const auto repeats = extract_repeats(haplotype);
-    gap_open_penalities.assign(sequence_size(haplotype), homopolymerErrors_.front());
-    tandem::Repeat max_repeat {};
+    gap_open.assign(sequence_size(haplotype), homopolymerErrors_.front());
+    gap_extend.assign(sequence_size(haplotype), extendPenalties_.front());
     for (const auto& repeat : repeats) {
-        std::int8_t e;
+        PenaltyType local_gap_open {};
         switch (repeat.period) {
-        case 1:
-        {
-            e = get_penalty(homopolymerErrors_, repeat.length);
-            break;
-        }
-        case 2:
-        {
-            static constexpr std::array<char, 2> AC {'A', 'C'};
-            e = get_penalty(diNucleotideTandemRepeatErrors_, repeat.length / 2);
-            const auto it = next(cbegin(haplotype.sequence()), repeat.pos);
-            if (e > 10 && std::equal(cbegin(AC), cend(AC), it)) {
-                e -= 2;
+            case 1:
+            {
+                local_gap_open = get_penalty(homopolymerErrors_, repeat.length);
+                break;
             }
-            break;
-        }
-        case 3:
-        {
-            static constexpr std::array<char, 3> GGC {'G', 'G', 'C'};
-            static constexpr std::array<char, 3> GCC {'G', 'C', 'C'};
-            e = get_penalty(triNucleotideTandemRepeatErrors_, repeat.length / 3);
-            const auto it = next(cbegin(haplotype.sequence()), repeat.pos);
-            if (e > 10 && std::equal(cbegin(GGC), cend(GGC), it)) {
-                e -= 2;
-            } else if (e > 12 && std::equal(cbegin(GCC), cend(GCC), it)) {
-                e -= 1;
+            case 2:
+            {
+                static constexpr std::array<char, 2> AC {'A', 'C'};
+                local_gap_open = get_penalty(diNucleotideTandemRepeatErrors_, repeat.length / 2);
+                if (local_gap_open > 10 && std::equal(cbegin(AC), cend(AC), next(cbegin(haplotype.sequence()), repeat.pos))) {
+                    local_gap_open -= 2;
+                }
+                break;
             }
-            break;
+            case 3:
+            {
+                static constexpr std::array<char, 3> GGC {'G', 'G', 'C'};
+                static constexpr std::array<char, 3> GCC {'G', 'C', 'C'};
+                local_gap_open = get_penalty(triNucleotideTandemRepeatErrors_, repeat.length / 3);
+                const auto itr = next(cbegin(haplotype.sequence()), repeat.pos);
+                if (local_gap_open > 10 && std::equal(cbegin(GGC), cend(GGC), itr)) {
+                    local_gap_open -= 2;
+                } else if (local_gap_open > 12 && std::equal(cbegin(GCC), cend(GCC), itr)) {
+                    local_gap_open -= 1;
+                }
+                break;
+            }
+            default:
+                local_gap_open = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
         }
         default:
-            e = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
+            local_gap_open = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
         }
-        fill_n_if_less(next(begin(gap_open_penalities), repeat.pos), repeat.length, e);
+        fill_n_if_less(next(begin(gap_open_penalities), repeat.pos), repeat.length, local_gap_open);
         if (repeat.length > max_repeat.length) {
             max_repeat = repeat;
         }
-    }
-    switch (max_repeat.period) {
-    case 1: return 3;
-    case 2: return 5;
-    case 3: return 5;
-    default: return defaultGapExtension_;
     }
 }
 
