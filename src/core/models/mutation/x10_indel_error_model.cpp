@@ -45,27 +45,26 @@ auto fill_n_if_less(FordwardIt first, std::size_t n, const Tp& value)
 
 } // namespace
 
-X10IndelErrorModel::PenaltyType
-X10IndelErrorModel::do_evaluate(const Haplotype& haplotype, PenaltyVector& gap_open_penalities) const
+void X10IndelErrorModel::do_set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const
 {
     using std::begin; using std::end; using std::cbegin; using std::cend; using std::next;
     const auto repeats = extract_repeats(haplotype);
     gap_open.assign(sequence_size(haplotype), homopolymerErrors_.front());
     for (const auto& repeat : repeats) {
-        PenaltyType e;
+        PenaltyType local_gap_open;
         switch (repeat.period) {
             case 1:
             {
-                e = get_penalty(homopolymerErrors_, repeat.length);
+                local_gap_open = get_penalty(homopolymerErrors_, repeat.length);
                 break;
             }
             case 2:
             {
                 static constexpr std::array<char, 2> AC {'A', 'C'};
-                e = get_penalty(diNucleotideTandemRepeatErrors_, repeat.length / 2);
+                local_gap_open = get_penalty(diNucleotideTandemRepeatErrors_, repeat.length / 2);
                 const auto it = next(cbegin(haplotype.sequence()), repeat.pos);
-                if (e > 10 && std::equal(cbegin(AC), cend(AC), it)) {
-                    e -= 2;
+                if (local_gap_open > 10 && std::equal(cbegin(AC), cend(AC), it)) {
+                    local_gap_open -= 2;
                 }
                 break;
             }
@@ -73,26 +72,22 @@ X10IndelErrorModel::do_evaluate(const Haplotype& haplotype, PenaltyVector& gap_o
             {
                 static constexpr std::array<char, 3> GGC {'G', 'G', 'C'};
                 static constexpr std::array<char, 3> GCC {'G', 'C', 'C'};
-                e = get_penalty(triNucleotideTandemRepeatErrors_, repeat.length / 3);
+                local_gap_open = get_penalty(triNucleotideTandemRepeatErrors_, repeat.length / 3);
                 const auto it = next(cbegin(haplotype.sequence()), repeat.pos);
-                if (e > 10 && std::equal(cbegin(GGC), cend(GGC), it)) {
-                    e -= 2;
-                } else if (e > 12 && std::equal(cbegin(GCC), cend(GCC), it)) {
-                    e -= 1;
+                if (local_gap_open > 10 && std::equal(cbegin(GGC), cend(GGC), it)) {
+                    local_gap_open -= 2;
+                } else if (local_gap_open > 12 && std::equal(cbegin(GCC), cend(GCC), it)) {
+                    local_gap_open -= 1;
                 }
                 break;
             }
             default:
-                e = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
+                local_gap_open = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
         }
-        default:
-            e = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
-        }
-        fill_n_if_less(next(begin(gap_open_penalities), repeat.pos), repeat.length, e);
-        if (repeat.length > max_repeat.length) {
-            max_repeat = repeat;
-        }
+        fill_n_if_less(next(begin(gap_open), repeat.pos), repeat.length, local_gap_open);
+        auto local_gap_extend = get_penalty(extendPenalties_, repeat.length / repeat.period);
+        fill_n_if_less(next(begin(gap_extend), repeat.pos), repeat.length, local_gap_extend);
     }
 }
-    
+
 } // namespace octopus

@@ -45,8 +45,7 @@ auto fill_n_if_less(FordwardIt first, std::size_t n, const Tp& value)
 
 } // namespace
 
-HiSeqIndelErrorModel::PenaltyType
-HiSeqIndelErrorModel::do_evaluate(const Haplotype& haplotype, PenaltyVector& gap_open_penalities) const
+void HiSeqIndelErrorModel::do_set_penalities(const Haplotype& haplotype, PenaltyVector& gap_open, PenaltyVector& gap_extend) const
 {
     using std::begin; using std::end; using std::cbegin; using std::cend; using std::next;
     const auto repeats = extract_repeats(haplotype);
@@ -85,13 +84,9 @@ HiSeqIndelErrorModel::do_evaluate(const Haplotype& haplotype, PenaltyVector& gap
             default:
                 local_gap_open = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
         }
-        default:
-            local_gap_open = get_penalty(polyNucleotideTandemRepeatErrors_, repeat.length / repeat.period);
-        }
-        fill_n_if_less(next(begin(gap_open_penalities), repeat.pos), repeat.length, local_gap_open);
-        if (repeat.length > max_repeat.length) {
-            max_repeat = repeat;
-        }
+        fill_n_if_less(next(begin(gap_open), repeat.pos), repeat.length, local_gap_open);
+        auto local_gap_extend = get_penalty(extendPenalties_, repeat.length / repeat.period);
+        fill_n_if_less(next(begin(gap_extend), repeat.pos), repeat.length, local_gap_extend);
     }
 }
 
