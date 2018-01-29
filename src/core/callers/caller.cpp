@@ -269,7 +269,8 @@ Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Va
     std::deque<CallWrapper> result {};
     std::vector<Haplotype> haplotypes {}, next_haplotypes {};
     GenomicRegion active_region;
-    boost::optional<GenomicRegion> next_active_region {}, prev_called_region {};
+    boost::optional<GenomicRegion> next_active_region {}, prev_call_region {};
+    std::vector<GenomicRegion> prev_called_regions {};
     auto completed_region = head_region(call_region);
     std::deque<Haplotype> protected_haplotypes {};
     while (true) {
@@ -330,7 +331,7 @@ Caller::call_variants(const GenomicRegion& call_region, const MappableFlatSet<Va
         }
         call_variants(active_region, call_region, next_active_region, backtrack_region,
                       candidates, haplotypes, haplotype_likelihoods, active_reads, *caller_latents,
-                      result, prev_called_region, completed_region);
+                      result, prev_call_region, prev_called_regions, completed_region);
         haplotype_likelihoods.clear();
         progress_meter.log_completed(completed_region);
     }
@@ -530,9 +531,11 @@ bool has_noninteracting_insertion(const GenomicRegion& insertion_region,
 
 bool can_remove_lhs_boundary_insertions(const GenomicRegion& uncalled_active_region,
                                         const boost::optional<GenomicRegion>& prev_called_region,
+                                        const std::vector<GenomicRegion>& prev_called_regions,
                                         const MappableFlatSet<Variant>& candidates)
 {
     return prev_called_region && are_adjacent(*prev_called_region, uncalled_active_region)
+           && !prev_called_regions.empty() && are_adjacent(prev_called_regions.back(), uncalled_active_region)
            && has_noninteracting_insertion(head_region(uncalled_active_region), candidates);
 }
 
@@ -569,7 +572,8 @@ bool can_remove_rhs_boundary_insertions(const GenomicRegion& uncalled_active_reg
 template <typename R>
 void remove_duplicate_boundary_insertions(R& contained, const MappableFlatSet<Variant>& candidates,
                                           const GenomicRegion& uncalled_active_region,
-                                          const boost::optional<GenomicRegion>& prev_called_region,
+                                          const boost::optional<GenomicRegion>& prev_call_region,
+                                          const std::vector<GenomicRegion>& prev_called_regions,
                                           const boost::optional<GenomicRegion>& next_active_region,
                                           const boost::optional<GenomicRegion>& backtrack_region)
 {
@@ -578,7 +582,7 @@ void remove_duplicate_boundary_insertions(R& contained, const MappableFlatSet<Va
     // It is usually better to keep those at the back as they have better posterior resolution, but
     // if there are other (non insertion) candidates overlapping with the insertion, then we must
     // keep front insertions as they must be called in phase with the interacting non-insertion.
-    if (can_remove_lhs_boundary_insertions(uncalled_active_region, prev_called_region, candidates)) {
+    if (can_remove_lhs_boundary_insertions(uncalled_active_region, prev_call_region, prev_called_regions, candidates)) {
         while (!empty(contained) && is_lhs_boundry_insertion(contained.front(), uncalled_active_region)) {
             contained.advance_begin(1);
         }
@@ -592,12 +596,14 @@ void remove_duplicate_boundary_insertions(R& contained, const MappableFlatSet<Va
 
 auto extract_callable_variants(const MappableFlatSet<Variant>& candidates,
                                const GenomicRegion& uncalled_active_region,
-                               const boost::optional<GenomicRegion>& prev_called_region,
+                               const boost::optional<GenomicRegion>& prev_call_region,
+                               const std::vector<GenomicRegion>& prev_called_regions,
                                const boost::optional<GenomicRegion>& next_active_region,
                                const boost::optional<GenomicRegion>& backtrack_region)
 {
     auto contained = contained_range(candidates, uncalled_active_region);
-    remove_duplicate_boundary_insertions(contained, candidates, uncalled_active_region, prev_called_region,
+    remove_duplicate_boundary_insertions(contained, candidates, uncalled_active_region,
+                                         prev_call_region, prev_called_regions,
                                          next_active_region, backtrack_region);
     return std::vector<Variant> {std::cbegin(contained), std::cend(contained)};
 }
@@ -614,14 +620,15 @@ void Caller::call_variants(const GenomicRegion& active_region,
                            const ReadMap& reads,
                            const Latents& latents,
                            std::deque<CallWrapper>& result,
-                           boost::optional<GenomicRegion>& prev_called_region,
+                           boost::optional<GenomicRegion>& prev_call_region,
+                           std::vector<GenomicRegion>& prev_called_regions,
                            GenomicRegion& completed_region) const
 {
     if (have_callable_region(active_region, next_active_region, backtrack_region, call_region)) {
         const auto passed_region = get_passed_region(active_region, next_active_region, backtrack_region);
         const auto uncalled_region = get_uncalled_region(active_region, passed_region, completed_region);
-        auto active_candidates = extract_callable_variants(candidates, uncalled_region, prev_called_region,
-                                                           next_active_region, backtrack_region);
+        auto active_candidates = extract_callable_variants(candidates, uncalled_region, prev_call_region,
+                                                           prev_called_regions, next_active_region, backtrack_region);
         std::vector<GenomicRegion> called_regions;
         if (!active_candidates.empty()) {
             if (debug_log_) stream(*debug_log_) << "Calling variants in region " << uncalled_region;
@@ -635,13 +642,14 @@ void Caller::call_variants(const GenomicRegion& active_region,
                 utils::append(std::move(variant_calls), result);
             }
         }
-        prev_called_region = uncalled_region;
+        prev_call_region = uncalled_region;
         if (refcalls_requested()) {
             auto alleles = generate_candidate_reference_alleles(uncalled_region, active_candidates, called_regions);
             auto reference_calls = wrap(call_reference(alleles, latents, reads));
             utils::append(std::move(reference_calls), result);
         }
         completed_region = encompassing_region(completed_region, passed_region);
+        prev_called_regions = std::move(called_regions);
     }
 }
 

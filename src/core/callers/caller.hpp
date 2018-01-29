@@ -191,7 +191,9 @@ private:
                        const MappableFlatSet<Variant>& candidates, const std::vector<Haplotype>& haplotypes,
                        const HaplotypeLikelihoodCache& haplotype_likelihoods, const ReadMap& reads,
                        const Latents& latents, std::deque<CallWrapper>& result,
-                       boost::optional<GenomicRegion>& prev_called_region, GenomicRegion& completed_region) const;
+                       boost::optional<GenomicRegion>& prev_called_region,
+                       std::vector<GenomicRegion>& prev_called_regions,
+                       GenomicRegion& completed_region) const;
     GenotypeCallMap get_genotype_calls(const Latents& latents) const;
     std::deque<Haplotype> get_called_haplotypes(const Latents& latents) const;
     void set_model_posteriors(std::vector<CallWrapper>& calls, const Latents& latents,
